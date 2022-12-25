@@ -1,10 +1,10 @@
 package lsp_srv_ex
 
 import (
-	"go.uber.org/zap"
 	"time"
 
 	lsp_srv "github.com/peske/lsp-srv"
+	"go.uber.org/zap"
 )
 
 type Config struct {
