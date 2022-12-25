@@ -1,0 +1,3 @@
+github.com/peske/lsp-srv v0.0.0-20221225093109-2c8f3d2d9449 h1:c7iC7AKxHrcvltePU28ySpBSUUUKm/PKX+QtWKqacqg=
+github.com/peske/lsp-srv v0.0.0-20221225093109-2c8f3d2d9449/go.mod h1:13LcnwoOkUeqDjKBIQ0mZz2kgD1XbSrM73tFaD4mECk=
+github.com/peske/lsp-srv v0.0.0-20221225110427-eec0939e3bba/go.mod h1:13LcnwoOkUeqDjKBIQ0mZz2kgD1XbSrM73tFaD4mECk=
