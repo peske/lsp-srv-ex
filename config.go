@@ -1,6 +1,7 @@
 package lsp_srv_ex
 
 import (
+	"go.uber.org/zap"
 	"time"
 
 	lsp_srv "github.com/peske/lsp-srv"
@@ -18,6 +19,8 @@ type Config struct {
 	IdleTimeout time.Duration
 
 	Caching bool `json:"caching"`
+
+	ZapConfig *zap.Config `json:"zapConfig"`
 }
 
 func (c *Config) toBaseConfig() *lsp_srv.Config {

@@ -6,25 +6,8 @@ only differences are:
 - When crating the config, instead of using `lsp_srv.Config` type, you should use `Config` type from this module. Config
   type from this module contains all the fields as the original, with few more fields added.
 - When starting the server, instead of using `lsp_srv.Run` function, you should use `Run` function from this module.
-
-In short, you can just replace the `import` so that instead:
-
-```go
-import (
-	lsp_srv "github.com/peske/lsp-srv"
-)
-```
-
-you have:
-
-```go
-import (
-	lsp_srv "github.com/peske/lsp-srv-ex"
-)
-```
-
-Another difference is that with this module `Config` often needs to be created because it defines which features you
-want to use.
+  Note that `Run` function here accepts one additional optional argument: `zapLogger`, of type `*zap.Logger`. It is the
+  logger that will be used by the server. If not specified, `lsp-srv-ex` module will create a logger.
 
 Here's a simple example:
 
@@ -45,7 +28,8 @@ func main() {
     }
 
 	// Here we assume that your factory function resides in `lsp` package, thus `lsp.NewServer`.
-	if err := lsp_srv.Run(lsp.NewServer, cfg); err != nil {
+	// Also, we are not specifying logging, so the last argument is `nil`.
+	if err := lsp_srv.Run(lsp.NewServer, cfg, nil); err != nil {
 		log.Fatal(err)
 	}
 }

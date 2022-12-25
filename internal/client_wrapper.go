@@ -4,15 +4,20 @@ import (
 	"context"
 
 	"github.com/peske/lsp-srv/lsp/protocol"
+	"go.uber.org/zap"
 )
 
 // clientWrapper implements protocol.ClientCloser interface and wraps the actual client.
 type clientWrapper struct {
-	inner protocol.ClientCloser
+	inner  protocol.ClientCloser
+	logger *zap.Logger
 }
 
-func NewClientWrapper(inner protocol.ClientCloser) protocol.ClientCloser {
-	return &clientWrapper{inner: inner}
+func NewClientWrapper(inner protocol.ClientCloser, lgr *zap.Logger) protocol.ClientCloser {
+	return &clientWrapper{
+		inner:  inner,
+		logger: lgr,
+	}
 }
 
 func (c *clientWrapper) LogTrace(ctx context.Context, params *protocol.LogTraceParams) error {
