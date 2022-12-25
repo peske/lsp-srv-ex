@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 
+	lsp_srv_ex "github.com/peske/lsp-srv-ex"
 	"github.com/peske/lsp-srv/lsp/protocol"
 	"go.uber.org/zap"
 )
@@ -10,12 +11,14 @@ import (
 // clientWrapper implements protocol.ClientCloser interface and wraps the actual client.
 type clientWrapper struct {
 	inner  protocol.ClientCloser
+	helper *lsp_srv_ex.Helper
 	logger *zap.Logger
 }
 
-func NewClientWrapper(inner protocol.ClientCloser, lgr *zap.Logger) protocol.ClientCloser {
+func NewClientWrapper(inner protocol.ClientCloser, helper *lsp_srv_ex.Helper, lgr *zap.Logger) protocol.ClientCloser {
 	return &clientWrapper{
 		inner:  inner,
+		helper: helper,
 		logger: lgr,
 	}
 }

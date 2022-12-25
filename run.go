@@ -18,7 +18,7 @@ var logger *zap.Logger
 // cfg:           Config instance.
 // zapLogger:     zap.Logger to use, or nil.
 // zapConfig:     Logging configuration to use. It will be ignored if `zapLogger` argument is not nil.
-func Run(serverFactory func(protocol.ClientCloser, context.Context, func()) protocol.Server, cfg *Config,
+func Run(serverFactory func(protocol.ClientCloser, context.Context, func(), *Helper) protocol.Server, cfg *Config,
 	zapLogger *zap.Logger) (err error) {
 	if zapLogger != nil {
 		logger = zapLogger
@@ -35,9 +35,10 @@ func Run(serverFactory func(protocol.ClientCloser, context.Context, func()) prot
 	}()
 
 	sf := func(clnt protocol.ClientCloser, ctx context.Context, ccl func()) protocol.Server {
-		cw := internal.NewClientWrapper(clnt, logger.Named("clientWrapper"))
-		s := serverFactory(cw, ctx, ccl)
-		return internal.NewServerWrapper(s, cfg, logger.Named("serverWrapper"))
+		h := newHelper(logger.Named("Helper"))
+		cw := internal.NewClientWrapper(clnt, h, logger.Named("clientWrapper"))
+		s := serverFactory(cw, ctx, ccl, h)
+		return internal.NewServerWrapper(s, h, cfg, logger.Named("serverWrapper"))
 	}
 
 	return lsp_srv.Run(sf, cfg.toBaseConfig())
