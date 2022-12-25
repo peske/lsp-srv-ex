@@ -2,10 +2,10 @@ package lsp_srv_ex
 
 import (
 	"context"
-	"go.uber.org/zap"
 
 	lsp_srv "github.com/peske/lsp-srv"
 	"github.com/peske/lsp-srv/lsp/protocol"
+	"go.uber.org/zap"
 )
 
 var logger *zap.Logger
@@ -18,22 +18,26 @@ var logger *zap.Logger
 // zapConfig:     Logging configuration to use. It will be ignored if `zapLogger` argument is not nil.
 func Run(serverFactory func(protocol.ClientCloser, context.Context, func(), *Helper) protocol.Server, cfg *Config,
 	zapLogger *zap.Logger) (err error) {
-	if zapLogger != nil {
-		logger = zapLogger
-	} else if cfg != nil && cfg.ZapConfig != nil {
-		logger, err = cfg.ZapConfig.Build()
+	if zapLogger == nil {
+		if cfg != nil && cfg.ZapConfig != nil {
+			logger, err = cfg.ZapConfig.Build()
+		} else {
+			logger, err = zap.NewProduction()
+		}
+
+		if err == nil {
+			defer func() {
+				_ = logger.Sync()
+			}()
+		} else {
+			return err
+		}
 	} else {
-		logger, err = zap.NewProduction()
+		logger = zapLogger
 	}
-	if err != nil {
-		return err
-	}
-	defer func() {
-		_ = logger.Sync()
-	}()
 
 	sf := func(clnt protocol.ClientCloser, ctx context.Context, ccl func()) protocol.Server {
-		h := newHelper(logger.Named("Helper"))
+		h := newHelper(logger)
 		cw := NewClientWrapper(clnt, h, logger.Named("clientWrapper"))
 		s := serverFactory(cw, ctx, ccl, h)
 		return NewServerWrapper(s, h, cfg, logger.Named("serverWrapper"))

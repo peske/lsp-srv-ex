@@ -2,8 +2,9 @@ package lsp_srv_ex
 
 import (
 	"fmt"
-	"go.uber.org/zap"
 	"sync"
+
+	"go.uber.org/zap"
 )
 
 // ServerStatus represents the status of the server.
@@ -35,11 +36,17 @@ type Helper struct {
 	statusLock sync.Mutex
 	status     ServerStatus
 	logger     *zap.Logger
+
+	Cache Cache
 }
 
 func newHelper(lgr *zap.Logger) *Helper {
 	return &Helper{
-		logger: lgr,
+		logger: lgr.With(zap.String("object", "Helper")),
+		Cache: Cache{
+			logger: lgr.With(zap.String("object", "Cache")),
+			files:  make(map[string]*File),
+		},
 	}
 }
 
