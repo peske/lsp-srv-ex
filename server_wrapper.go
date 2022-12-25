@@ -1,23 +1,22 @@
-package internal
+package lsp_srv_ex
 
 import (
 	"context"
+
 	"github.com/peske/lsp-srv/lsp/protocol"
 	"go.uber.org/zap"
-
-	lsp_srv_ex "github.com/peske/lsp-srv-ex"
 )
 
 // serverWrapper implements protocol.Server and wraps the actual server.
 type serverWrapper struct {
 	inner  protocol.Server
-	helper *lsp_srv_ex.Helper
-	cfg    *lsp_srv_ex.Config
+	helper *Helper
+	cfg    *Config
 
 	logger *zap.Logger
 }
 
-func NewServerWrapper(inner protocol.Server, helper *lsp_srv_ex.Helper, cfg *lsp_srv_ex.Config,
+func NewServerWrapper(inner protocol.Server, helper *Helper, cfg *Config,
 	lgr *zap.Logger) protocol.Server {
 	return &serverWrapper{
 		inner:  inner,
@@ -74,7 +73,7 @@ func (s *serverWrapper) Exit(ctx context.Context) error {
 
 func (s *serverWrapper) Initialize(ctx context.Context, params *protocol.ParamInitialize) (*protocol.InitializeResult, error) {
 	s.logger.Debug("Initialize", zap.Any("params", params))
-	if err := s.helper.SetStatus(lsp_srv_ex.Initializing); err != nil {
+	if err := s.helper.setStatus(Initializing); err != nil {
 		return nil, err
 	}
 	return s.inner.Initialize(ctx, params)
@@ -83,7 +82,7 @@ func (s *serverWrapper) Initialize(ctx context.Context, params *protocol.ParamIn
 func (s *serverWrapper) Initialized(ctx context.Context, params *protocol.InitializedParams) error {
 	s.logger.Debug("Initialized", zap.Any("params", params))
 	err := s.inner.Initialized(ctx, params)
-	if err := s.helper.SetStatus(lsp_srv_ex.Initialized); err != nil {
+	if err := s.helper.setStatus(Initialized); err != nil {
 		return err
 	}
 	return err
@@ -117,7 +116,7 @@ func (s *serverWrapper) DidSaveNotebookDocument(ctx context.Context, params *pro
 func (s *serverWrapper) Shutdown(ctx context.Context) error {
 	s.logger.Debug("Shutdown")
 	err := s.inner.Shutdown(ctx)
-	if err := s.helper.SetStatus(lsp_srv_ex.Shutdown); err != nil {
+	if err := s.helper.setStatus(Shutdown); err != nil {
 		return err
 	}
 	return err

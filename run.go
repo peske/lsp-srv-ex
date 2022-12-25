@@ -6,8 +6,6 @@ import (
 
 	lsp_srv "github.com/peske/lsp-srv"
 	"github.com/peske/lsp-srv/lsp/protocol"
-
-	"github.com/peske/lsp-srv-ex/internal"
 )
 
 var logger *zap.Logger
@@ -36,9 +34,9 @@ func Run(serverFactory func(protocol.ClientCloser, context.Context, func(), *Hel
 
 	sf := func(clnt protocol.ClientCloser, ctx context.Context, ccl func()) protocol.Server {
 		h := newHelper(logger.Named("Helper"))
-		cw := internal.NewClientWrapper(clnt, h, logger.Named("clientWrapper"))
+		cw := NewClientWrapper(clnt, h, logger.Named("clientWrapper"))
 		s := serverFactory(cw, ctx, ccl, h)
-		return internal.NewServerWrapper(s, h, cfg, logger.Named("serverWrapper"))
+		return NewServerWrapper(s, h, cfg, logger.Named("serverWrapper"))
 	}
 
 	return lsp_srv.Run(sf, cfg.toBaseConfig())

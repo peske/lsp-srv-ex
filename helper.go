@@ -6,6 +6,7 @@ import (
 	"sync"
 )
 
+// ServerStatus represents the status of the server.
 type ServerStatus int
 
 const (
@@ -42,7 +43,7 @@ func newHelper(lgr *zap.Logger) *Helper {
 	}
 }
 
-func (h *Helper) SetStatus(status ServerStatus) (err error) {
+func (h *Helper) setStatus(status ServerStatus) (err error) {
 	h.statusLock.Lock()
 	defer h.statusLock.Unlock()
 
@@ -67,6 +68,7 @@ func (h *Helper) SetStatus(status ServerStatus) (err error) {
 	return err
 }
 
+// GetStatus returns the current ServerStatus.
 func (h *Helper) GetStatus() ServerStatus {
 	h.statusLock.Lock()
 	defer h.statusLock.Unlock()
