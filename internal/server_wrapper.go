@@ -401,6 +401,6 @@ func (s *serverWrapper) ResolveWorkspaceSymbol(ctx context.Context, params *prot
 }
 
 func (s *serverWrapper) NonstandardRequest(ctx context.Context, method string, params interface{}) (interface{}, error) {
-	s.logger.Debug("NonstandardRequest", zap.Any("params", params))
+	s.logger.Debug("NonstandardRequest", zap.String("method", method), zap.Any("params", params))
 	return s.inner.NonstandardRequest(ctx, method, params)
 }
