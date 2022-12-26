@@ -11,6 +11,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// File represents a file in cache.
 type File struct {
 	uri        span.URI
 	name       string
@@ -21,14 +22,22 @@ type File struct {
 	buffer []*protocol.TextDocumentContentChangeEvent
 }
 
+// URI returns `span.URI` of the file.
 func (f *File) URI() span.URI {
 	return f.uri
 }
 
+// Name returns the name of the file.
 func (f *File) Name() string {
-	return f.name
+	n := f.name
+	if n == "" {
+		n = f.uri.Filename()
+		f.name = n
+	}
+	return n
 }
 
+// Cache represents the cache.
 type Cache struct {
 	logger *zap.Logger
 
@@ -173,6 +182,10 @@ func (c *Cache) GetFiles() []*File {
 	return fs
 }
 
+// GetFileContent returns the content of the file specified by `uri`.
+// Returns:
+// - the content of the file and `true` if the file is found in the cache;
+// - empty string and `false` if file is not found.
 func (c *Cache) GetFileContent(uri span.URI) (string, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
