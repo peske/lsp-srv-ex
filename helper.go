@@ -45,7 +45,7 @@ func newHelper(lgr *zap.Logger) *Helper {
 		logger: lgr.With(zap.String("object", "Helper")),
 		Cache: Cache{
 			logger: lgr.With(zap.String("object", "Cache")),
-			files:  make(map[string]*File),
+			files:  make(map[string]*file),
 		},
 	}
 }

@@ -11,8 +11,41 @@ import (
 	"go.uber.org/zap"
 )
 
-// File represents a file in cache.
+// FileInfo interface defines the basic file info.
+type FileInfo interface {
+	URI() span.URI
+	Name() string
+}
+
 type File struct {
+	file    *file
+	Content []byte
+	Version int32
+}
+
+// URI returns `span.URI` of the file.
+func (f *File) URI() span.URI {
+	return f.file.URI()
+}
+
+// Name returns the name of the file.
+func (f *File) Name() string {
+	return f.file.Name()
+}
+
+// ChangedMeanwhile checks if the original file in the cache is changed since
+// this `File` instance is created (and detached).
+func (f *File) ChangedMeanwhile() bool {
+	f.file.parent.mu.Lock()
+	defer f.file.parent.mu.Unlock()
+
+	return f.file.version != f.Version
+}
+
+// file represents a file in cache.
+type file struct {
+	parent *Cache
+
 	uri        span.URI
 	name       string
 	content    []byte
@@ -23,12 +56,12 @@ type File struct {
 }
 
 // URI returns `span.URI` of the file.
-func (f *File) URI() span.URI {
+func (f *file) URI() span.URI {
 	return f.uri
 }
 
 // Name returns the name of the file.
-func (f *File) Name() string {
+func (f *file) Name() string {
 	n := f.name
 	if n == "" {
 		n = f.uri.Filename()
@@ -37,12 +70,24 @@ func (f *File) Name() string {
 	return n
 }
 
+func (f *file) toDetachedLocked() *File {
+	df := &File{
+		file:    f,
+		Content: make([]byte, len(f.content), len(f.content)),
+		Version: f.version,
+	}
+
+	copy(df.Content, f.content)
+
+	return df
+}
+
 // Cache represents the cache.
 type Cache struct {
 	logger *zap.Logger
 
 	mu    sync.Mutex
-	files map[string]*File
+	files map[string]*file
 }
 
 func (c *Cache) didOpen(params *protocol.DidOpenTextDocumentParams) (err error) {
@@ -60,7 +105,8 @@ func (c *Cache) didOpen(params *protocol.DidOpenTextDocumentParams) (err error) 
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.files[string(uri)] = &File{
+	c.files[string(uri)] = &file{
+		parent:     c,
 		uri:        uri,
 		content:    []byte(params.TextDocument.Text),
 		version:    params.TextDocument.Version,
@@ -115,19 +161,15 @@ func (c *Cache) didChange(params *protocol.DidChangeTextDocumentParams) (err err
 	// We accept a full content change even if the server expected incremental changes.
 	if len(params.ContentChanges) == 1 && params.ContentChanges[0].Range == nil &&
 		params.ContentChanges[0].RangeLength == 0 {
-		languageID := ""
 		if f == nil {
+			f = &file{parent: c, uri: uri}
+			c.files[string(uri)] = f
 			c.logger.Warn(fmt.Sprintf("didChange '%s' full content received.", uri))
 		} else {
-			languageID = f.languageID
 			c.logger.Warn(fmt.Sprintf("didChange '%s' full content received although the file exists.", uri))
 		}
-		c.files[string(uri)] = &File{
-			uri:        uri,
-			content:    []byte(params.ContentChanges[0].Text),
-			version:    params.TextDocument.Version,
-			languageID: languageID,
-		}
+		f.content = []byte(params.ContentChanges[0].Text)
+		f.version = params.TextDocument.Version
 		return
 	}
 
@@ -171,29 +213,27 @@ func (c *Cache) didChange(params *protocol.DidChangeTextDocumentParams) (err err
 }
 
 // GetFiles returns the list of files kept in the cache.
-func (c *Cache) GetFiles() []*File {
+func (c *Cache) GetFiles() []FileInfo {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	fs := make([]*File, 0, len(c.files))
+	fs := make([]FileInfo, 0, len(c.files))
 	for _, f := range c.files {
 		fs = append(fs, f)
 	}
 	return fs
 }
 
-// GetFileContent returns the content of the file specified by `uri`.
-// Returns:
-// - the content of the file and `true` if the file is found in the cache;
-// - empty string and `false` if file is not found.
-func (c *Cache) GetFileContent(uri span.URI) (string, bool) {
+// GetFile returns `*File` pointer specified by `uri`.
+// Note that the returned instance is detached from the cache, meaning that it
+// won't be updated with any changes that may arrive after creating it.
+func (c *Cache) GetFile(uri span.URI) *File {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	f := c.files[string(uri)]
-	if f == nil {
-		return "", false
+	if f := c.files[string(uri)]; f == nil {
+		return nil
+	} else {
+		return f.toDetachedLocked()
 	}
-
-	return string(f.content), true
 }
