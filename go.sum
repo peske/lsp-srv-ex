@@ -1,6 +1,10 @@
 github.com/peske/lsp-srv v0.0.0-20221225093109-2c8f3d2d9449 h1:c7iC7AKxHrcvltePU28ySpBSUUUKm/PKX+QtWKqacqg=
 github.com/peske/lsp-srv v0.0.0-20221225093109-2c8f3d2d9449/go.mod h1:13LcnwoOkUeqDjKBIQ0mZz2kgD1XbSrM73tFaD4mECk=
 github.com/peske/lsp-srv v0.0.0-20221225110427-eec0939e3bba/go.mod h1:13LcnwoOkUeqDjKBIQ0mZz2kgD1XbSrM73tFaD4mECk=
+github.com/peske/lsp-srv v0.0.0-20230119013230-245736dd7c24 h1:ZFUOpwah0jvo9gWQZgnBl4gxpADFPrjvzrt21Wcdnew=
+github.com/peske/lsp-srv v0.0.0-20230119013230-245736dd7c24/go.mod h1:j72Zc290M+LWJgHGAFjRmJzgAPGHJ1UXPj+W7vNU3dg=
+github.com/peske/x-tools-internal v0.0.0-20230119000014-09d47ba9c763 h1:KDqfQruK2CtOCI0DqhWYUD7ADUbR+z/+CgvDM3dA3bs=
+github.com/peske/x-tools-internal v0.0.0-20230119000014-09d47ba9c763/go.mod h1:BeOPgTX9m/c9hZkRpyYTeX/0PDy3L51A0VTXRSWjvMQ=
 go.uber.org/atomic v1.10.0 h1:9qC72Qh0+3MqyJbAn8YU5xVq1frD8bn3JtD2oXtafVQ=
 go.uber.org/atomic v1.10.0/go.mod h1:LUxbIzbOniOlMKjJjyPfpl4v+PKK2cNJn91OQbhoJI0=
 go.uber.org/multierr v1.9.0 h1:7fIwc/ZtS0q++VgcfqFDxSBZVv/Xo49/SYnDFupUwlI=

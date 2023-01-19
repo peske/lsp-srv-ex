@@ -3,7 +3,7 @@ package lsp_srv_ex
 import (
 	"time"
 
-	lsp_srv "github.com/peske/lsp-srv"
+	"github.com/peske/lsp-srv/server"
 	"go.uber.org/zap"
 )
 
@@ -23,11 +23,11 @@ type Config struct {
 	ZapConfig *zap.Config `json:"zapConfig"`
 }
 
-func (c *Config) toBaseConfig() *lsp_srv.Config {
+func (c *Config) toBaseConfig() *server.Config {
 	if c == nil {
 		return nil
 	}
-	return &lsp_srv.Config{
+	return &server.Config{
 		Port:        c.Port,
 		Address:     c.Address,
 		IdleTimeout: c.IdleTimeout,

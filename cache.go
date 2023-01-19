@@ -184,7 +184,7 @@ func (c *Cache) didChange(params *protocol.DidChangeTextDocumentParams) (err err
 		// out-of-order or overlapping changes---and much more efficient.
 
 		// Make sure to update column mapper along with the content.
-		m := protocol.NewColumnMapper(uri, content)
+		m := protocol.NewMapper(uri, content)
 		if cc.Range == nil {
 			err = fmt.Errorf("%w: didChange unexpected nil range for change", jsonrpc2.ErrInternal)
 			return

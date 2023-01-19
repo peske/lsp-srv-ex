@@ -3,8 +3,8 @@ package lsp_srv_ex
 import (
 	"context"
 
-	lsp_srv "github.com/peske/lsp-srv"
 	"github.com/peske/lsp-srv/lsp/protocol"
+	"github.com/peske/lsp-srv/server"
 	"go.uber.org/zap"
 )
 
@@ -43,5 +43,5 @@ func Run(serverFactory func(protocol.ClientCloser, context.Context, func(), *Hel
 		return NewServerWrapper(s, h, cfg, logger.Named("serverWrapper"))
 	}
 
-	return lsp_srv.Run(sf, cfg.toBaseConfig())
+	return server.Run(sf, cfg.toBaseConfig())
 }
