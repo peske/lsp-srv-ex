@@ -37,10 +37,10 @@ func Run(serverFactory func(protocol.ClientCloser, context.Context, func(), *Hel
 	}
 
 	sf := func(clnt protocol.ClientCloser, ctx context.Context, ccl func()) protocol.Server {
-		h := newHelper(logger)
-		cw := NewClientWrapper(clnt, h, logger.Named("clientWrapper"))
+		h := newHelper(cfg, logger)
+		cw := NewClientWrapper(clnt, h, logger.With(zap.String("object", "clientWrapper")))
 		s := serverFactory(cw, ctx, ccl, h)
-		return NewServerWrapper(s, h, cfg, logger.Named("serverWrapper"))
+		return NewServerWrapper(s, h, cfg, logger.With(zap.String("object", "serverWrapper")))
 	}
 
 	return server.Run(sf, cfg.toBaseConfig())

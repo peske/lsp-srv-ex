@@ -1,8 +1,9 @@
 package lsp_srv_ex
 
 import (
-	"bytes"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/peske/lsp-srv/lsp/protocol"
@@ -11,123 +12,72 @@ import (
 	"go.uber.org/zap"
 )
 
-// FileInfo interface defines the basic file info.
-type FileInfo interface {
-	URI() span.URI
-	Name() string
-}
-
-type File struct {
-	file    *file
-	Content []byte
-	Version int32
-}
-
-// URI returns `span.URI` of the file.
-func (f *File) URI() span.URI {
-	return f.file.URI()
-}
-
-// Name returns the name of the file.
-func (f *File) Name() string {
-	return f.file.Name()
-}
-
-// ChangedMeanwhile checks if the original file in the cache is changed since
-// this `File` instance is created (and detached).
-func (f *File) ChangedMeanwhile() bool {
-	f.file.parent.mu.Lock()
-	defer f.file.parent.mu.Unlock()
-
-	return f.file.version != f.Version
-}
-
-// file represents a file in cache.
-type file struct {
-	parent *Cache
-
-	uri        span.URI
-	name       string
-	content    []byte
-	version    int32
-	languageID string
-
-	buffer []*protocol.TextDocumentContentChangeEvent
-}
-
-// URI returns `span.URI` of the file.
-func (f *file) URI() span.URI {
-	return f.uri
-}
-
-// Name returns the name of the file.
-func (f *file) Name() string {
-	n := f.name
-	if n == "" {
-		n = f.uri.Filename()
-		f.name = n
-	}
-	return n
-}
-
-func (f *file) toDetachedLocked() *File {
-	df := &File{
-		file:    f,
-		Content: make([]byte, len(f.content), len(f.content)),
-		Version: f.version,
-	}
-
-	copy(df.Content, f.content)
-
-	return df
-}
-
 // Cache represents the cache.
 type Cache struct {
 	logger *zap.Logger
 
-	mu    sync.Mutex
-	files map[string]*file
+	rootUri  span.URI
+	rootPath string
+
+	mu    sync.RWMutex
+	files map[span.URI]*file
 }
 
-func (c *Cache) didOpen(params *protocol.DidOpenTextDocumentParams) (err error) {
-	if params == nil {
-		err = fmt.Errorf("%w: didOpen params == nil", jsonrpc2.ErrInvalidParams)
-		c.logger.Error("didOpen", zap.Error(err))
-		return
-	}
+func (c *Cache) getFile(uri span.URI) *file {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
-	uri := params.TextDocument.URI.SpanURI()
-	if !uri.IsFile() {
-		return
+	if c.files == nil {
+		return nil
 	}
+	return c.files[uri]
+}
 
+func (c *Cache) setFile(f *file) *file {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.files[string(uri)] = &file{
-		parent:     c,
-		uri:        uri,
-		content:    []byte(params.TextDocument.Text),
-		version:    params.TextDocument.Version,
-		languageID: params.TextDocument.LanguageID,
+	if c.files == nil {
+		c.files = map[span.URI]*file{f.uri: f}
+		return f
 	}
-	return
+	if prev := c.files[f.uri]; prev != nil {
+		return prev
+	}
+	c.files[f.uri] = f
+	return f
 }
 
-func (c *Cache) didClose(params *protocol.DidCloseTextDocumentParams) (err error) {
-	if params == nil {
-		err = fmt.Errorf("%w: didClose params == nil", jsonrpc2.ErrInvalidParams)
-		c.logger.Error("didClose", zap.Error(err))
-		return
-	}
+func (c *Cache) initialize(params *protocol.ParamInitialize, res *protocol.InitializeResult) (
+	*protocol.InitializeResult, error) {
+	c.rootUri = params.RootURI.SpanURI()
+	c.rootPath = params.RootPath
 
-	uri := params.TextDocument.URI.SpanURI()
+	fs := make(map[span.URI]*file)
+	c.loadFiles(c.rootPath, fs)
 
 	c.mu.Lock()
-	delete(c.files, string(uri))
+	c.files = fs
 	c.mu.Unlock()
-	return
+
+	if res == nil {
+		res = &protocol.InitializeResult{}
+	}
+
+	var tds *protocol.TextDocumentSyncOptions
+	ok := false
+	if res.Capabilities.TextDocumentSync != nil {
+		tds, ok = res.Capabilities.TextDocumentSync.(*protocol.TextDocumentSyncOptions)
+	}
+	if !ok {
+		tds = &protocol.TextDocumentSyncOptions{}
+		res.Capabilities.TextDocumentSync = tds
+	}
+	tds.OpenClose = true
+	tds.Change = protocol.Incremental
+	tds.Save = protocol.SaveOptions{IncludeText: false}
+
+	return res, nil
 }
 
 func (c *Cache) didChange(params *protocol.DidChangeTextDocumentParams) (err error) {
@@ -144,6 +94,7 @@ func (c *Cache) didChange(params *protocol.DidChangeTextDocumentParams) (err err
 
 	uri := params.TextDocument.URI.SpanURI()
 	if !uri.IsFile() {
+		c.logger.Warn("didChange for a non-file uri", zap.String("URI", string(uri)))
 		return
 	}
 
@@ -152,24 +103,19 @@ func (c *Cache) didChange(params *protocol.DidChangeTextDocumentParams) (err err
 		return
 	}
 
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	f := c.files[string(uri)]
+	f := c.getFile(uri)
 
 	// Check if the client sent the full content of the file.
 	// We accept a full content change even if the server expected incremental changes.
 	if len(params.ContentChanges) == 1 && params.ContentChanges[0].Range == nil &&
 		params.ContentChanges[0].RangeLength == 0 {
 		if f == nil {
-			f = &file{parent: c, uri: uri}
-			c.files[string(uri)] = f
+			f = c.setFile(&file{parent: c, uri: uri})
 			c.logger.Warn(fmt.Sprintf("didChange '%s' full content received.", uri))
 		} else {
 			c.logger.Warn(fmt.Sprintf("didChange '%s' full content received although the file exists.", uri))
 		}
-		f.content = []byte(params.ContentChanges[0].Text)
-		f.version = params.TextDocument.Version
+		f.setIdeContent([]byte(params.ContentChanges[0].Text), params.TextDocument.Version)
 		return
 	}
 
@@ -178,44 +124,82 @@ func (c *Cache) didChange(params *protocol.DidChangeTextDocumentParams) (err err
 		return
 	}
 
-	content := f.content
-	for _, cc := range params.ContentChanges {
-		// TODO(adonovan): refactor to use diff.Apply, which is robust w.r.t.
-		// out-of-order or overlapping changes---and much more efficient.
+	err = f.mergeChanges(params)
+	return
+}
 
-		// Make sure to update column mapper along with the content.
-		m := protocol.NewMapper(uri, content)
-		if cc.Range == nil {
-			err = fmt.Errorf("%w: didChange unexpected nil range for change", jsonrpc2.ErrInternal)
-			return
-		}
-		var spn span.Span
-		spn, err = m.RangeSpan(*cc.Range)
-		if err != nil {
-			return
-		}
-		start, end := spn.Start().Offset(), spn.End().Offset()
-		if end < start {
-			err = fmt.Errorf("%w: invalid range for content change", jsonrpc2.ErrInternal)
-			return
-		}
-		var buf bytes.Buffer
-		buf.Write(content[:start])
-		buf.WriteString(cc.Text)
-		buf.Write(content[end:])
-		content = buf.Bytes()
+func (c *Cache) didClose(params *protocol.DidCloseTextDocumentParams) (err error) {
+	if params == nil {
+		err = fmt.Errorf("%w: didClose params == nil", jsonrpc2.ErrInvalidParams)
+		c.logger.Error("didClose", zap.Error(err))
+		return
 	}
 
-	f.content = content
-	f.version = params.TextDocument.Version
-
+	f := c.getFile(params.TextDocument.URI.SpanURI())
+	if f == nil {
+		c.logger.Warn("didClose unknown file", zap.String("URI", string(params.TextDocument.URI)))
+	} else {
+		f.closed()
+	}
 	return
+}
+
+func (c *Cache) didOpen(params *protocol.DidOpenTextDocumentParams) (err error) {
+	if params == nil {
+		err = fmt.Errorf("%w: didOpen params == nil", jsonrpc2.ErrInvalidParams)
+		c.logger.Error("didOpen", zap.Error(err))
+		return
+	}
+
+	uri := params.TextDocument.URI.SpanURI()
+	if !uri.IsFile() {
+		return
+	}
+
+	f := c.getFile(uri)
+	if f == nil {
+		c.logger.Warn("didOpen unknown file", zap.String("URI", string(uri)))
+		f = c.setFile(&file{
+			parent:     c,
+			uri:        uri,
+			languageID: params.TextDocument.LanguageID,
+		})
+	}
+
+	f.setIdeContent([]byte(params.TextDocument.Text), params.TextDocument.Version)
+	return
+}
+
+func (c *Cache) didSave(params *protocol.DidSaveTextDocumentParams) (err error) {
+	if params == nil {
+		err = fmt.Errorf("%w: didSave params == nil", jsonrpc2.ErrInvalidParams)
+		c.logger.Error("didSave", zap.Error(err))
+		return
+	}
+
+	f := c.getFile(params.TextDocument.URI.SpanURI())
+	if f == nil {
+		c.logger.Warn("didSave unknown file", zap.String("URI", string(params.TextDocument.URI)))
+	} else {
+		f.resetSavedContent()
+	}
+	return
+}
+
+// RootURI returns the `span.URI` of the root directory.
+func (c *Cache) RootURI() span.URI {
+	return c.rootUri
+}
+
+// RootPath returns the local absolute path of the root directory.
+func (c *Cache) RootPath() string {
+	return c.rootPath
 }
 
 // GetFiles returns the list of files kept in the cache.
 func (c *Cache) GetFiles() []FileInfo {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
 	fs := make([]FileInfo, 0, len(c.files))
 	for _, f := range c.files {
@@ -228,12 +212,31 @@ func (c *Cache) GetFiles() []FileInfo {
 // Note that the returned instance is detached from the cache, meaning that it
 // won't be updated with any changes that may arrive after creating it.
 func (c *Cache) GetFile(uri span.URI) *File {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	if f := c.getFile(uri); f != nil {
+		return f.detach()
+	}
+	return nil
+}
 
-	if f := c.files[string(uri)]; f == nil {
-		return nil
-	} else {
-		return f.toDetachedLocked()
+func (c *Cache) loadFiles(dir string, files map[span.URI]*file) {
+	fds, err := os.ReadDir(dir)
+	if err != nil {
+		c.logger.Warn("loadFiles error", zap.Error(err))
+		return
+	}
+	for _, fd := range fds {
+		path := filepath.Join(dir, fd.Name())
+		if fd.IsDir() {
+			if fd.Name() != ".git" {
+				c.loadFiles(path, files)
+			}
+		} else {
+			f := &file{
+				parent: c,
+				uri:    span.URIFromPath(path),
+				path:   path,
+			}
+			files[f.uri] = f
+		}
 	}
 }

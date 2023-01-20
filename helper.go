@@ -37,17 +37,20 @@ type Helper struct {
 	status     ServerStatus
 	logger     *zap.Logger
 
-	Cache Cache
+	Cache *Cache
 }
 
-func newHelper(lgr *zap.Logger) *Helper {
-	return &Helper{
-		logger: lgr.With(zap.String("object", "Helper")),
-		Cache: Cache{
+func newHelper(cfg *Config, lgr *zap.Logger) *Helper {
+	h := &Helper{}
+	if cfg != nil && cfg.Caching {
+		h.Cache = &Cache{
 			logger: lgr.With(zap.String("object", "Cache")),
-			files:  make(map[string]*file),
-		},
+		}
 	}
+	if lgr != nil {
+		h.logger = lgr.With(zap.String("object", "Helper"))
+	}
+	return h
 }
 
 func (h *Helper) setStatus(status ServerStatus) (err error) {
