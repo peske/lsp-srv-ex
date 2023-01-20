@@ -16,6 +16,10 @@ section of the LSP specification, we assume that it is general enough, and used 
 implement it in the base module. There's simply no need to make all the module users to reinvent the wheel by
 implementing their own caching.
 
+# Stability?
+
+Work in progress!
+
 # License?
 
 The same ["BSD-3-Clause license"](./LICENSE) used by the original repository.

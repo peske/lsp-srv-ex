@@ -74,35 +74,17 @@ func (s *serverWrapper) Exit(ctx context.Context) error {
 	return s.inner.Exit(ctx)
 }
 
-func (s *serverWrapper) Initialize(ctx context.Context, params *protocol.ParamInitialize) (*protocol.InitializeResult, error) {
+func (s *serverWrapper) Initialize(ctx context.Context, params *protocol.ParamInitialize) (*protocol.InitializeResult,
+	error) {
 	s.logger.Debug("Initialize", zap.Any("params", params))
 	if err := s.helper.setStatus(Initializing); err != nil {
 		return nil, err
 	}
 	res, err := s.inner.Initialize(ctx, params)
-	if !s.cfg.Caching {
+	if s.helper.Cache == nil || err != nil {
 		return res, err
 	}
-	if err != nil {
-		return nil, err
-	}
-	if res == nil {
-		res = &protocol.InitializeResult{}
-	}
-
-	var tds *protocol.TextDocumentSyncOptions
-	ok := false
-	if res.Capabilities.TextDocumentSync != nil {
-		tds, ok = res.Capabilities.TextDocumentSync.(*protocol.TextDocumentSyncOptions)
-	}
-	if !ok {
-		tds = &protocol.TextDocumentSyncOptions{}
-		res.Capabilities.TextDocumentSync = tds
-	}
-	tds.OpenClose = true
-	tds.Change = protocol.Incremental
-
-	return res, nil
+	return s.helper.Cache.initialize(params, res)
 }
 
 func (s *serverWrapper) Initialized(ctx context.Context, params *protocol.InitializedParams) error {
@@ -183,24 +165,41 @@ func (s *serverWrapper) Diagnostic(ctx context.Context, params *string) (*string
 
 func (s *serverWrapper) DidChange(ctx context.Context, params *protocol.DidChangeTextDocumentParams) error {
 	s.logger.Debug("DidChange", zap.Any("params", params))
-	s.helper.Cache.didChange(params)
+	if s.helper.Cache != nil {
+		if err := s.helper.Cache.didChange(params); err != nil {
+			return err
+		}
+	}
 	return s.inner.DidChange(ctx, params)
 }
 
 func (s *serverWrapper) DidClose(ctx context.Context, params *protocol.DidCloseTextDocumentParams) error {
 	s.logger.Debug("DidClose", zap.Any("params", params))
-	s.helper.Cache.didClose(params)
+	if s.helper.Cache != nil {
+		if err := s.helper.Cache.didClose(params); err != nil {
+			return err
+		}
+	}
 	return s.inner.DidClose(ctx, params)
 }
 
 func (s *serverWrapper) DidOpen(ctx context.Context, params *protocol.DidOpenTextDocumentParams) error {
 	s.logger.Debug("DidOpen", zap.Any("params", params))
-	s.helper.Cache.didOpen(params)
+	if s.helper.Cache != nil {
+		if err := s.helper.Cache.didOpen(params); err != nil {
+			return err
+		}
+	}
 	return s.inner.DidOpen(ctx, params)
 }
 
 func (s *serverWrapper) DidSave(ctx context.Context, params *protocol.DidSaveTextDocumentParams) error {
 	s.logger.Debug("DidSave", zap.Any("params", params))
+	if s.helper.Cache != nil {
+		if err := s.helper.Cache.didSave(params); err != nil {
+			return err
+		}
+	}
 	return s.inner.DidSave(ctx, params)
 }
 
