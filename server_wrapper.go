@@ -358,11 +358,6 @@ func (s *serverWrapper) DiagnosticWorkspace(ctx context.Context, params *protoco
 	return s.inner.DiagnosticWorkspace(ctx, params)
 }
 
-func (s *serverWrapper) DiagnosticRefresh(ctx context.Context) error {
-	s.logger.Debug("DiagnosticRefresh")
-	return s.inner.DiagnosticRefresh(ctx)
-}
-
 func (s *serverWrapper) DidChangeConfiguration(ctx context.Context, params *protocol.DidChangeConfigurationParams) error {
 	s.logger.Debug("DidChangeConfiguration", zap.Any("params", params))
 	return s.inner.DidChangeConfiguration(ctx, params)
@@ -396,21 +391,6 @@ func (s *serverWrapper) DidRenameFiles(ctx context.Context, params *protocol.Ren
 func (s *serverWrapper) ExecuteCommand(ctx context.Context, params *protocol.ExecuteCommandParams) (interface{}, error) {
 	s.logger.Debug("ExecuteCommand", zap.Any("params", params))
 	return s.inner.ExecuteCommand(ctx, params)
-}
-
-func (s *serverWrapper) InlayHintRefresh(ctx context.Context) error {
-	s.logger.Debug("InlayHintRefresh")
-	return s.inner.InlayHintRefresh(ctx)
-}
-
-func (s *serverWrapper) InlineValueRefresh(ctx context.Context) error {
-	s.logger.Debug("InlineValueRefresh")
-	return s.inner.InlineValueRefresh(ctx)
-}
-
-func (s *serverWrapper) SemanticTokensRefresh(ctx context.Context) error {
-	s.logger.Debug("SemanticTokensRefresh")
-	return s.inner.SemanticTokensRefresh(ctx)
 }
 
 func (s *serverWrapper) Symbol(ctx context.Context, params *protocol.WorkspaceSymbolParams) ([]protocol.SymbolInformation, error) {

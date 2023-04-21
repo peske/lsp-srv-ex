@@ -75,7 +75,7 @@ func (c *Cache) initialize(params *protocol.ParamInitialize, res *protocol.Initi
 	}
 	tds.OpenClose = true
 	tds.Change = protocol.Incremental
-	tds.Save = protocol.SaveOptions{IncludeText: false}
+	tds.Save = &protocol.SaveOptions{IncludeText: false}
 
 	return res, nil
 }

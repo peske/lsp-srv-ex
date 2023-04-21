@@ -14,6 +14,26 @@ type clientWrapper struct {
 	logger *zap.Logger
 }
 
+func (c *clientWrapper) DiagnosticRefresh(ctx context.Context) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *clientWrapper) InlayHintRefresh(ctx context.Context) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *clientWrapper) InlineValueRefresh(ctx context.Context) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *clientWrapper) SemanticTokensRefresh(ctx context.Context) error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func NewClientWrapper(inner protocol.ClientCloser, helper *Helper, lgr *zap.Logger) protocol.ClientCloser {
 	return &clientWrapper{
 		inner:  inner,
