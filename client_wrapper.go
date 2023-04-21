@@ -14,26 +14,6 @@ type clientWrapper struct {
 	logger *zap.Logger
 }
 
-func (c *clientWrapper) DiagnosticRefresh(ctx context.Context) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (c *clientWrapper) InlayHintRefresh(ctx context.Context) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (c *clientWrapper) InlineValueRefresh(ctx context.Context) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (c *clientWrapper) SemanticTokensRefresh(ctx context.Context) error {
-	//TODO implement me
-	panic("implement me")
-}
-
 func NewClientWrapper(inner protocol.ClientCloser, helper *Helper, lgr *zap.Logger) protocol.ClientCloser {
 	return &clientWrapper{
 		inner:  inner,
@@ -110,6 +90,26 @@ func (c *clientWrapper) CodeLensRefresh(ctx context.Context) error {
 func (c *clientWrapper) Configuration(ctx context.Context, params *protocol.ParamConfiguration) ([]protocol.LSPAny, error) {
 	c.logger.Debug("Configuration", zap.Any("params", params))
 	return c.inner.Configuration(ctx, params)
+}
+
+func (c *clientWrapper) DiagnosticRefresh(ctx context.Context) error {
+	c.logger.Debug("DiagnosticRefresh")
+	return c.inner.DiagnosticRefresh(ctx)
+}
+
+func (c *clientWrapper) InlayHintRefresh(ctx context.Context) error {
+	c.logger.Debug("InlayHintRefresh")
+	return c.inner.InlayHintRefresh(ctx)
+}
+
+func (c *clientWrapper) InlineValueRefresh(ctx context.Context) error {
+	c.logger.Debug("InlineValueRefresh")
+	return c.inner.InlineValueRefresh(ctx)
+}
+
+func (c *clientWrapper) SemanticTokensRefresh(ctx context.Context) error {
+	c.logger.Debug("SemanticTokensRefresh")
+	return c.inner.SemanticTokensRefresh(ctx)
 }
 
 func (c *clientWrapper) WorkspaceFolders(ctx context.Context) ([]protocol.WorkspaceFolder, error) {
