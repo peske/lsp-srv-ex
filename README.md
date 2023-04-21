@@ -27,4 +27,4 @@ The same ["BSD-3-Clause license"](./LICENSE) used by the original repository.
 # Version?
 
 Current `main` branch is based on the original repository commit
-[245736d](https://github.com/peske/lsp-srv/commit/245736dd7c24f76d0406f53e32b4466488cb7618) from January 19, 2023.
+[f55813a](https://github.com/peske/lsp-srv/commit/f55813a313b6c91f6d7562bbfb8f6a55c42f868e) from April 21, 2023.
